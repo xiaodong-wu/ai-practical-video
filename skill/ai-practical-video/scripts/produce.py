@@ -12,7 +12,10 @@ def timeline(run):
     v=read(run/'voice/manifest.json');sc=read(run/'voice/measured-scenes.json');cap=read(run/'demo/capture/log.json')
     if not 60<=v['duration']<=90: raise ValueError('revise narration to fit 60–90 seconds')
     for s in sc:
-        a=cap['actions'][s['capture_index']];s.update(video='../demo/capture/recording.webm',clip_start=a['start'],clip_end=a['end']-.15)
+        start=s.get('capture_index');end=s.get('capture_end_index',start)
+        if type(start) is not int or type(end) is not int or not 0<=start<=end<len(cap['actions']):
+            raise ValueError(f"scene {s.get('id','unknown')}: capture range must satisfy 0 <= capture_index <= capture_end_index < {len(cap['actions'])}; got {start!r}..{end!r}")
+        s.update(video='../demo/capture/recording.webm',clip_start=cap['actions'][start]['start'],clip_end=cap['actions'][end]['end']-.15)
     t={'fps':30,'width':1080,'height':1920,'duration':math.ceil(v['duration']*30)/30,'scenes':sc,'captions':v['segments'],'script_hash':v['script_hash']}
     write(run/'film/timeline.json',t);shutil.copyfile(HERE.parent/'assets/film.html',run/'film/index.html')
     # Render root contains demo and film so capture paths remain local and editable.

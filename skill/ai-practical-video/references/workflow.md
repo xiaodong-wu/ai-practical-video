@@ -25,7 +25,7 @@ python3 "$SKILL/scripts/pipeline.py" check-script --run "$RUN"
 node "$SKILL/scripts/audit-layout.mjs" "$RUN"
 ```
 
-seal 命令 `--inputs`/`--outputs` 接 run 相对路径列表，文件必须真实存在，禁止路径越界。语音按短句合成并测时，每条字幕对应自己的音频段，不使用估计语速生成正式时间码。实际视频映射 `capture_index` 到 capture/log.json 的操作片段。
+seal 命令 `--inputs`/`--outputs` 接 run 相对路径列表，文件必须真实存在，禁止路径越界。语音按短句合成并测时，每条字幕对应自己的音频段，不使用估计语速生成正式时间码。实际视频映射 `capture_index` 到 capture/log.json 的操作片段。旁白包含连续多个动作时，可设置 `capture_end_index`，首尾索引均包含在片段内；省略时保持单动作映射，必须满足 `0 <= capture_index <= capture_end_index < 动作数`。
 
 检查预览后写 `qa/preview-review.json`：preview_sha256、visual_checked、phone_readable、claims_match、audio_checked、no_clipping、review_method、notes。必须有实际检查依据。音频可用本地 ASR 加信号检测；说明无法替代主观听审。失败时修复原因后重跑对应阶段。
 
