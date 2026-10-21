@@ -162,7 +162,8 @@ def validate_script(run):
         assert all(inside(run,p).is_file() for p in scene.get('proof_files',[]))
         assert scene.get('claim_checked') is True, 'verify claim against actual output first'
     phases=[s['phase'] for s in d['scenes']]
-    assert phases[0]=='result' and 'problem' in phases and 'steps' in phases and 'verify' in phases and phases[-1]=='service'
+    assert phases[0] in ['result','hook'] and 'problem' in phases and 'steps' in phases and 'verify' in phases and phases[-1] in ['service','takeaway']
+    assert any(s['visual_kind']!='illustration' for s in d['scenes']), 'a practical video needs real operation evidence'
     return {'ok':True,'scenes':len(seen),'script_hash':sha(run/'script/script.json'),'at':now()}
 
 def main():

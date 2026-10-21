@@ -32,6 +32,23 @@ class CaptureRange(unittest.TestCase):
                 result = read(run / relative)['scenes']
                 self.assertEqual((result[0]['clip_start'], result[0]['clip_end']), (1.0, 5.85))
                 self.assertEqual((result[1]['clip_start'], result[1]['clip_end']), (6.2, 8.85))
+            # A disclosed illustration is not a fabricated capture action.
+            write(run / 'script/script.json', {'visual_style': 'editorial',
+                'editorial_recipe': 'workday-calendar-v1', 'editorial_data': {'year': 2026}})
+            seal(run, 'script', [], ['script/script.json'])
+            illustrated = scenes + [{'id': 'explainer', 'start': 58, 'end': 60,
+                'visual_kind': 'illustration', 'disclosure': '示意画面'}]
+            write(run / 'voice/measured-scenes.json', illustrated)
+            seal(run, 'voice', [], ['voice/manifest.json', 'voice/measured-scenes.json'])
+            timeline(run)
+            result = read(run / 'timeline.json')
+            self.assertNotIn('video', result['scenes'][-1])
+            self.assertEqual(result['editorial_data'], {'year': 2026})
+            illustrated[-1]['disclosure'] = ''
+            write(run / 'voice/measured-scenes.json', illustrated)
+            seal(run, 'voice', [], ['voice/manifest.json', 'voice/measured-scenes.json'])
+            with self.assertRaisesRegex(ValueError, 'disclosure'):
+                timeline(run)
             for start, end in ((-1, 1), (1, 0), (0, 3), (0, '1')):
                 with self.subTest(start=start, end=end):
                     scenes[0].update(capture_index=start, capture_end_index=end)

@@ -11,21 +11,31 @@ def timeline(run):
     if m['stages'].get('voice',{}).get('state')!='complete':raise ValueError('voice is missing or stale')
     v=read(run/'voice/manifest.json');sc=read(run/'voice/measured-scenes.json');cap=read(run/'demo/capture/log.json')
     if not 60<=v['duration']<=90: raise ValueError('revise narration to fit 60–90 seconds')
+    script=read(run/'script/script.json');style=script.get('visual_style','practical')
+    templates={'practical':'film.html','editorial':'film-editorial.html'}
+    if style not in templates:raise ValueError('unknown visual_style: '+style)
     for s in sc:
+        if s.get('visual_kind')=='illustration':
+            if s.get('disclosure')!='示意画面':raise ValueError('illustrations require disclosure')
+            if style!='editorial':raise ValueError('illustration scenes require the editorial renderer')
+            continue
         start=s.get('capture_index');end=s.get('capture_end_index',start)
         if type(start) is not int or type(end) is not int or not 0<=start<=end<len(cap['actions']):
             raise ValueError(f"scene {s.get('id','unknown')}: capture range must satisfy 0 <= capture_index <= capture_end_index < {len(cap['actions'])}; got {start!r}..{end!r}")
         s.update(video='../demo/capture/recording.webm',clip_start=cap['actions'][start]['start'],clip_end=cap['actions'][end]['end']-.15)
-    t={'fps':30,'width':1080,'height':1920,'duration':math.ceil(v['duration']*30)/30,'scenes':sc,'captions':v['segments'],'script_hash':v['script_hash']}
-    write(run/'film/timeline.json',t);shutil.copyfile(HERE.parent/'assets/film.html',run/'film/index.html')
+    t={'fps':30,'width':1080,'height':1920,'duration':math.ceil(v['duration']*30)/30,'scenes':sc,'captions':v['segments'],'script_hash':v['script_hash'],'visual_style':style}
+    for key in ['editorial_recipe','editorial_data']:
+        if key in script:t[key]=script[key]
+    write(run/'film/timeline.json',t);shutil.copyfile(HERE.parent/'assets'/templates[style],run/'film/index.html')
     # Render root contains demo and film so capture paths remain local and editable.
     shutil.copyfile(run/'film/index.html',run/'index.html');shutil.copyfile(run/'film/timeline.json',run/'timeline.json')
     troot=read(run/'timeline.json')
-    for s in troot['scenes']:s['video']='demo/capture/recording.webm'
+    for s in troot['scenes']:
+        if 'video' in s:s['video']='demo/capture/recording.webm'
     write(run/'timeline.json',troot)
     srt='\n\n'.join(f'{i+1}\n{srt_time(c["start"])} --> {srt_time(c["end"])}\n{c["text"]}' for i,c in enumerate(v['segments']))+'\n'
     (run/'film/subtitles.srt').write_text(srt,encoding='utf-8')
-    seal(run,'timeline',['voice/manifest.json','voice/measured-scenes.json','demo/capture/log.json','demo/capture/recording.webm'],['film/timeline.json','film/index.html','film/subtitles.srt','index.html','timeline.json'])
+    seal(run,'timeline',['script/script.json','voice/manifest.json','voice/measured-scenes.json','demo/capture/log.json','demo/capture/recording.webm'],['film/timeline.json','film/index.html','film/subtitles.srt','index.html','timeline.json'])
 
 def command(args): subprocess.run([str(x) for x in args],check=True)
 def render(run, final=False):
@@ -36,11 +46,16 @@ def render(run, final=False):
         if not all(q.get(k) is True for k in ['visual_checked','phone_readable','claims_match','audio_checked','no_clipping']):raise ValueError('preview review not passed')
         if q.get('preview_sha256')!=sha(run/'preview.mp4'):raise ValueError('preview review is stale')
     h=1920 if final else 960
+    audio=run/'voice/narration.wav';audio_outputs=[]
+    if read(run/'script/script.json').get('audio_style')=='light-original':
+        from editorial_audio import create
+        create(run);audio=run/'voice/mix.wav'
+        audio_outputs=['voice/editorial-bed.wav','voice/mix.wav','voice/mix.json']
     command(['node',HERE/'render.mjs','--dir',run,'--video','--h',h,'--workers','2'])
     out=run/('final.mp4' if final else 'preview.mp4')
     # No atempo, no fixed -t, no shortest: preserve the complete narration.
-    command(['ffmpeg','-v','error','-y','-i',run/f'out/visual_{h}.mp4','-i',run/'voice/narration.wav','-map','0:v','-map','1:a','-c:v','copy','-af','loudnorm=I=-16:TP=-1.5:LRA=9','-c:a','aac','-b:a','192k','-ar','48000','-movflags','+faststart',out])
-    seal(run,'final' if final else 'preview',['timeline.json','index.html','voice/narration.wav']+(['qa/preview-review.json'] if final else []),[out.name])
+    command(['ffmpeg','-v','error','-y','-i',run/f'out/visual_{h}.mp4','-i',audio,'-map','0:v','-map','1:a','-c:v','copy','-af','loudnorm=I=-16:TP=-1.5:LRA=9','-c:a','aac','-b:a','192k','-ar','48000','-movflags','+faststart',out])
+    seal(run,'final' if final else 'preview',['timeline.json','index.html','script/script.json','voice/narration.wav']+(['qa/preview-review.json'] if final else []),[out.name]+audio_outputs)
 
 def covers(run):
     from PIL import Image,ImageDraw,ImageFont
@@ -50,6 +65,25 @@ def covers(run):
     fontpath=next((p for p in candidates if p and pathlib.Path(p).is_file()),None)
     if not fontpath:raise ValueError('configure scripts/local.json cover_font with a CJK font path')
     for platform in ['wechat','douyin']:
+        if read(run/'script/script.json').get('visual_style')=='editorial':
+            im=Image.new('RGB',(1080,1920),'#f4eddd');d=ImageDraw.Draw(im)
+            f=lambda n:ImageFont.truetype(fontpath,n)
+            for y in range(30,1920,30):
+                for x in range(30,1080,30):d.ellipse((x,y,x+2,y+2),fill='#ddd5c4')
+            d.rounded_rectangle((68,160,500,233),radius=30,fill='#173f38')
+            d.text((94,174),'AI 实操 · 有点意思',font=f(34),fill='#fff9eb')
+            for i,line in enumerate(data[platform]['cover_lines']):d.text((68,305+i*112),line,font=f(86),fill='#203c37')
+            d.rounded_rectangle((68,626,934,1396),radius=40,fill='#fffaf0',outline='#203c37',width=5)
+            d.text((100,662),'真实工具 · 模拟数据',font=f(36),fill='#376b60')
+            shot=Image.open(run/'demo/capture/step-0.png').convert('RGB')
+            # Real result panel, cropped rather than redrawn as a pretend interface.
+            crop=data[platform].get('cover_capture_crop',[0,0,shot.width,shot.height])
+            shot=shot.crop(tuple(crop));shot.thumbnail((804,580))
+            im.paste(shot,(100+(804-shot.width)//2,755))
+            d.text((78,1470),data[platform]['cover_subtitle'],font=f(39),fill='#203c37')
+            d.text((78,1570),'规则交给 AI，结果自己核对',font=f(36),fill='#c15e46')
+            im.save(run/f'delivery/{platform}-cover.png')
+            continue
         im=Image.new('RGB',(1080,1920),'#0d1729');d=ImageDraw.Draw(im)
         f=lambda n:ImageFont.truetype(fontpath,n)
         d.text((78,230),'AI · 做给你看',font=f(42),fill='#68e0b2')
@@ -76,8 +110,8 @@ def qa(run):
     write(run/'qa/content-check.json',{'frames_checked':len(ranges),'minimum_luma_range':min(ranges) if ranges else None,'threshold':30,'region':[100,670,800,650]})
     audit=read(run/'qa/layout.json');checks['layout']=all(x['captionFits'] and x['headingFits'] and x['videoReady'] and x.get('screenNonBlank') for x in audit)
     review=read(run/'qa/preview-review.json');checks['review_current']=review['preview_sha256']==sha(run/'preview.mp4') and all(review[k] for k in ['visual_checked','phone_readable','claims_match','audio_checked','no_clipping'])
-    sheet=Image.new('RGB',(360*4,640*2),'#152135');draw=ImageDraw.Draw(sheet)
-    for i,s in enumerate(t['scenes'][:8]):
+    sheet=Image.new('RGB',(360*4,640*math.ceil(len(t['scenes'])/4)),'#eee8d9');draw=ImageDraw.Draw(sheet)
+    for i,s in enumerate(t['scenes']):
         output=run/f'qa/phone-{i}.jpg';command(['ffmpeg','-v','error','-y','-ss',s['start']+.5,'-i',run/'final.mp4','-frames:v','1','-vf','scale=360:640',output]);sheet.paste(Image.open(output),((i%4)*360,(i//4)*640))
     sheet.save(run/'qa/contact-sheet.jpg');covers(run)
     report={'at':now(),'status':'passed' if all(checks.values()) else 'failed','checks':checks,'media':p,'final_sha256':sha(run/'final.mp4'),'notes':['local finished video only; not published','AI disclosure suggestion must be checked against the current upload form'],'manual_review':review}
@@ -94,8 +128,9 @@ def package(run):
     platforms=read(run/'script/platforms.json')
     for name,label in [('wechat','微信视频号'),('douyin','抖音')]:
         p=platforms[name]
-        (delivery/(label+'-发布文案.txt')).write_text('标题：'+p['title']+'\n\n简介：'+p['description']+'\n\n话题：'+' '.join('#'+h for h in p['hashtags'])+'\n\nAI声明：'+p['ai_disclosure']+'\n\n相关服务方向：'+p['monetization']+'\n',encoding='utf-8')
-    write(delivery/'delivery-manifest.json',{'run_id':m['run_id'],'status':'completed_local','published':False,'final_sha256':sha(run/'final.mp4'),'script_sha256':sha(run/'script/script.json'),'duration':duration(run/'final.mp4'),'resolution':[1080,1920],'voice':read(run/'voice/manifest.json')['voice']})
+        (delivery/(label+'-发布文案.txt')).write_text('标题：'+p['title']+'\n\n简介：'+p['description']+'\n\n话题：'+' '.join('#'+h for h in p['hashtags'])+'\n\nAI声明：'+p['ai_disclosure']+'\n\n相关服务方向：'+p['monetization']+'\n'+('\n声音说明：'+p['voice_notice']+'\n' if p.get('voice_notice') else ''),encoding='utf-8')
+    voice=read(run/'voice/manifest.json')
+    write(delivery/'delivery-manifest.json',{'run_id':m['run_id'],'status':'completed_local','published':False,'final_sha256':sha(run/'final.mp4'),'script_sha256':sha(run/'script/script.json'),'duration':duration(run/'final.mp4'),'resolution':[1080,1920],'voice':voice['voice'],'publication_readiness':'voice_rights_unverified' if voice.get('publication_rights')=='not_verified' else 'manual_platform_review'})
     shutil.copytree(run/'demo/files',delivery/'example-files',dirs_exist_ok=True)
     shutil.copytree(HERE.parent/'references/upstream',delivery/'source-licenses',dirs_exist_ok=True)
     write(delivery/'asset-usage.json',read(run/'demo/usage.json'))

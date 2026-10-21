@@ -11,6 +11,8 @@ The root MIT license covers original work and modifications. It does not replace
 
 The adapted renderer is `skill/ai-practical-video/scripts/render.mjs`. The upstream reference copy is retained separately; its original license applies to the included and derived portions. The Chinese workflow and vertical film template were written for this project. `produce.py` implements its own audio muxing workflow and refers to upstream mixing structure.
 
+Optional online preview: [rany2/edge-tts](https://github.com/rany2/edge-tts), version 7.3.1, is installed separately rather than vendored. Its installed LICENSE states LGPLv3 for the client except `srt_composer.py`, which is MIT. The independently written adapter uses its public Python API. These software licenses do not establish publication rights for service-generated audio; preview outputs retain `publication_rights: not_verified`.
+
 Exact source-file identities are recorded in [upstream/pins.json](skill/ai-practical-video/references/upstream/pins.json). Downloaded model identities are recorded in [model-lock.json](skill/ai-practical-video/references/model-lock.json). Node and Python dependency versions are pinned in adjacent lockfiles; each dependency retains its own license.
 
 No upstream example news imagery, portraits, logos, music or videos are included. The sample customer data is fictional and uses reserved `.example` email domains. System fonts are referenced from the user's computer, not redistributed. Model licensing does not grant rights to arbitrary third-party content.
