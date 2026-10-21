@@ -1,0 +1,6 @@
+{
+  "python": "/absolute/path/to/runtime/venv/bin/python",
+  "playwright_from": "/absolute/path/to/runtime/package.json",
+  "voice_config": "/absolute/path/to/runtime/voice.json",
+  "cover_font": "/absolute/path/to/chinese-font.ttc"
+}

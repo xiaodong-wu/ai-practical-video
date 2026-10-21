@@ -1,0 +1,33 @@
+# Generated runtimes, private machine paths and account data
+.runtime/
+runtime/
+node_modules/
+venv/
+.venv/
+**/scripts/local.json
+**/install-origin.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.onnx
+*.bin
+
+# Private production work and large generated media
+ai-practical-video-project/
+runs/
+history.json
+.production.lock
+*.mp4
+*.webm
+*.wav
+*.mp3
+*.zip
+
+# Local development artifacts
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+examples/customer-cleanup/output/

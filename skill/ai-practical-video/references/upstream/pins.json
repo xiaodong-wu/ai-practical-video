@@ -1,0 +1,20 @@
+{
+  "wallstreet": {
+    "repository": "HeyChengC/wallstreet-explainer",
+    "commit": "920ed1d3b3ecb5997d861902e2719dda6688c0b1",
+    "files": {
+      "LICENSE": "99475c4c0c896777c58e65e388d5b107f1f175720390f798d73a39329d4111fb",
+      "render.mjs": "d5e02b835981fd8370021e340d879d374d535e2a7d62a4d042aa6d2e5b58e1ba",
+      "mix.py": "c4a330587536ea46aa299a10546aaea293e6b6057399daf723c0534ad408babb"
+    }
+  },
+  "scriptwriter": {
+    "repository": "SterlingChin/video-production-skills",
+    "commit": "7c06790e9bc1d83662b749b2fa09e62fe8c2b1ef",
+    "files": {
+      "LICENSE": "8c6733ce8e3740d1ecff7d5254fa221f3612a90fa3e2dca1a3d31063450f06a5",
+      "handoff-template.md": "ef09e039043a7b545d8a100848af3e74bc74f51d56ede59cbba9c6635759d3c3",
+      "original-skill.md": "8945368d2192e535cc674714efa8f8e41c8f0e7ca991e0e3fd04c41731de91b9"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI 实操视频"
+  short_description: "搜索近期 AI 选题，实测操作并生成微信视频号与抖音竖屏视频素材包"
+  default_prompt: "使用 $ai-practical-video 搜索最新 AI 选题，制作一条经过实测的竖屏视频并交付发布素材包。"
+policy:
+  allow_implicit_invocation: true

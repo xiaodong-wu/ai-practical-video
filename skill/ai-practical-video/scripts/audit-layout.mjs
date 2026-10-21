@@ -1,0 +1,5 @@
+import {handler} from './serve.mjs';import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';import{createRequire}from'node:module';
+const run=path.resolve(process.argv[2]);let local={};try{local=JSON.parse(await fs.readFile(new URL('local.json',import.meta.url),'utf8'));}catch{}
+const{chromium}=createRequire(process.env.PLAYWRIGHT_FROM||local.playwright_from||import.meta.url)('playwright');
+const server=http.createServer(handler(run));
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const b=await chromium.launch();try{const p=await b.newPage({viewport:{width:1080,height:1920}});await p.goto(`http://127.0.0.1:${server.address().port}/index.html`);await p.evaluate(()=>window.ready);const t=JSON.parse(await fs.readFile(path.join(run,'timeline.json'),'utf8'));let rows=[];for(const c of t.captions){await p.evaluate(t=>window.seek(t),c.start+.02);rows.push({time:c.start,text:c.text,...await p.evaluate(()=>window.audit())});}await fs.writeFile(path.join(run,'qa/layout.json'),JSON.stringify(rows,null,2));console.log('layout',rows.length,'caption states');}finally{await b.close();server.close();}

@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><title>AI实操 · 竖屏时间线</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1729;font-family:'PingFang SC','Microsoft YaHei',sans-serif}#stage{width:1080px;height:1920px;transform-origin:0 0;position:absolute;color:#f6f4ec;overflow:hidden;background:radial-gradient(ellipse at 90% 0%,#1c3852,transparent 60%),#0d1729}.brand{position:absolute;left:68px;top:120px;font-size:30px;letter-spacing:5px;color:#68e0b2}.num{position:absolute;right:150px;top:115px;font-size:32px;color:#9fb1c1}h1{position:absolute;left:68px;top:176px;margin:0;font-size:62px;line-height:1.25;width:860px;font-weight:750}#label{position:absolute;left:68px;top:344px;font-size:29px;color:#a8bdd0}.screen{position:absolute;left:68px;top:412px;width:880px;height:1174px;border:2px solid #456078;border-radius:22px;overflow:hidden;background:white;box-shadow:0 28px 70px #0008}canvas{width:100%;height:100%}video{position:absolute;left:-2000px;width:630px;height:840px}#caption{position:absolute;left:68px;top:1620px;width:880px;font-size:47px;line-height:1.4;font-weight:650;min-height:134px;display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-line}#tag{position:absolute;left:68px;top:1795px;font-size:27px;color:#8fa6b8}#bar{position:absolute;left:68px;top:1768px;height:5px;background:#68e0b2;border-radius:5px}#focus{position:absolute;pointer-events:none;border:5px solid #18b480;background:#33ffbd15;border-radius:12px;display:none}#mask{position:absolute;inset:0;background:#0d1729;opacity:0;pointer-events:none}
+</style><div id="stage"><div class="brand">AI · 做给你看</div><div class="num" id="num"></div><h1 id="heading"></h1><div id="label"></div><div class="screen"><canvas id="canvas" width="630" height="840"></canvas><video id="video" muted playsinline preload="auto"></video><div id="focus"></div></div><div id="caption"></div><div id="bar"></div><div id="tag">模拟数据实测 · AI辅助制作与配音</div><div id="mask"></div></div>
+<script>
+let T;const $=id=>document.getElementById(id);let currentSrc='';
+window.ready=(async()=>{T=await(await fetch('timeline.json')).json();$('stage').style.transform=`scale(${innerWidth/1080})`;await document.fonts.ready;await window.seek(0);})();
+window.seek=async function(t){
+ const s=T.scenes.find(s=>t>=s.start&&t<s.end)||T.scenes.at(-1);const idx=T.scenes.indexOf(s);
+ $('heading').textContent=s.heading;$('label').textContent=s.disclosure||'真实操作录屏 · 本地文件预览';$('num').textContent=String(idx+1).padStart(2,'0')+' / '+T.scenes.length;
+ const sub=T.captions.find(c=>t>=c.start&&t<c.end);let txt=sub?sub.text:'';if(txt.length>18)txt=txt.slice(0,Math.ceil(txt.length/2))+'\n'+txt.slice(Math.ceil(txt.length/2));$('caption').textContent=txt;
+ $('bar').style.width=(880*Math.min(1,t/T.duration))+'px';
+ const v=$('video');if(currentSrc!==s.video){currentSrc=s.video;v.src=s.video;await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=()=>rej(Error('missing capture '+s.video));});}
+ const target=Math.max(0,Math.min(v.duration-.08,s.clip_start+Math.min(t-s.start,s.clip_end-s.clip_start)));
+ if(Math.abs(v.currentTime-target)>.012){await new Promise((res,rej)=>{v.onseeked=res;v.onerror=rej;v.currentTime=target;});}
+ await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+ const canvas=$('canvas');canvas.getContext('2d').drawImage(v,0,0,630,840);
+ const b=$('focus');if(s.highlight){const [x,y,w,h]=s.highlight;b.style.cssText=`display:block;left:${x*880/630}px;top:${y*1174/840}px;width:${w*880/630}px;height:${h*1174/840}px`;}else b.style.display='none';
+ $('mask').style.opacity=String(Math.max(0,.16-(t-s.start)*.8));
+};
+window.audit=()=>({screenNonBlank:(()=>{const a=$('canvas').getContext('2d').getImageData(20,180,590,580).data;let lo=255,hi=0;for(let i=0;i<a.length;i+=128){lo=Math.min(lo,a[i]);hi=Math.max(hi,a[i]);}return hi-lo>40;})(),captionFits:$('caption').scrollHeight<=150,headingFits:$('heading').scrollHeight<=158,videoReady:$('video').readyState>=2,captionFont:47,screen:{left:68,top:412,right:948,bottom:1586},caption:{left:68,top:1620,right:948,bottom:1754}});
+</script>
